@@ -1,9 +1,15 @@
-// Инициализация Telegram Web App
-const tg = window.Telegram.WebApp;
-tg.ready();
-tg.expand(); // Развернуть на весь экран
+// === Инициализация Telegram Web App (с защитой) ===
+let tg = null;
 
-// Данные колеса
+if (window.Telegram && window.Telegram.WebApp) {
+    tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+} else {
+    console.log('Telegram Web App не доступен (запуск в браузере)');
+}
+
+// === Данные колеса ===
 const compliments = [
     { text: 'прекрасная', color: '#FF6B9D' },
     { text: 'умная', color: '#4A90E2' },
@@ -19,7 +25,7 @@ let lastResultIndex = -1;
 let currentRotation = 0;
 let isSpinning = false;
 
-// Элементы DOM
+// === Элементы DOM ===
 const wheelScreen = document.getElementById('wheel-screen');
 const resultScreen = document.getElementById('result-screen');
 const wheel = document.getElementById('wheel');
@@ -27,14 +33,14 @@ const spinBtn = document.getElementById('spin-btn');
 const continueBtn = document.getElementById('continue-btn');
 const resultWord = document.getElementById('result-word');
 
-// Настройка Canvas
+// === Настройка Canvas ===
 const ctx = wheel.getContext('2d');
 const centerX = wheel.width / 2;
 const centerY = wheel.height / 2;
 const radius = wheel.width / 2 - 10;
 const segmentAngle = (2 * Math.PI) / compliments.length;
 
-// Отрисовка колеса
+// === Отрисовка колеса ===
 function drawWheel() {
     ctx.clearRect(0, 0, wheel.width, wheel.height);
     
@@ -76,12 +82,17 @@ function drawWheel() {
     ctx.stroke();
 }
 
-// Вращение колеса
+// === Вращение колеса ===
 function spinWheel() {
     if (isSpinning) return;
     
     isSpinning = true;
     spinBtn.disabled = true;
+    
+    // Вибрация (если Telegram доступен)
+    if (tg && tg.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred('medium');
+    }
     
     // Выбираем случайный сегмент (не повторяющийся)
     let availableIndices = compliments.map((_, i) => i).filter(i => i !== lastResultIndex);
@@ -91,9 +102,8 @@ function spinWheel() {
     // Рассчитываем угол остановки
     const segmentDegrees = 360 / compliments.length;
     const targetSegmentAngle = resultIndex * segmentDegrees;
-    // Добавляем случайность внутри сегмента
     const randomOffset = (Math.random() - 0.5) * segmentDegrees * 0.8;
-    const finalAngle = 360 * 5 + (360 - targetSegmentAngle) + randomOffset; // 5 полных оборотов
+    const finalAngle = 360 * 5 + (360 - targetSegmentAngle) + randomOffset;
     
     // Анимация вращения (3 секунды с замедлением)
     const duration = 3000;
@@ -109,14 +119,12 @@ function spinWheel() {
         
         currentRotation = startRotation + finalAngle * easeProgress;
         
-        // Поворачиваем колесо
         wheel.style.transform = `rotate(${currentRotation}deg)`;
         wheel.style.transition = 'none';
         
         if (progress < 1) {
             requestAnimationFrame(animate);
         } else {
-            // Анимация завершена
             setTimeout(() => {
                 showResult(compliments[resultIndex].text);
                 isSpinning = false;
@@ -128,74 +136,66 @@ function spinWheel() {
     animate();
 }
 
-// Показ результата с фейерверками
+// === Показ результата с фейерверками ===
 async function showResult(word) {
-    // Переключаем экраны
     wheelScreen.classList.remove('active');
     resultScreen.classList.add('active');
-    
-    // Показываем слово
     resultWord.textContent = word.toUpperCase();
     
-    // Запускаем фейерверки (используем tsParticles Confetti)
     await startFireworks();
 }
 
-// Фейерверки
+// === Фейерверки ===
 async function startFireworks() {
     const colors = ['#ff0000', '#00ff00', '#ff8c00'];
     
-    // Запускаем несколько залпов
     for (let i = 0; i < 5; i++) {
         setTimeout(() => {
-            tsParticles.confetti({
-                particleCount: 100,
-                spread: 70,
-                origin: {
-                    x: Math.random() * 0.8 + 0.1,
-                    y: Math.random() * 0.6 + 0.2
-                },
-                colors: colors
-            });
+            if (window.tsParticles && tsParticles.confetti) {
+                tsParticles.confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: {
+                        x: Math.random() * 0.8 + 0.1,
+                        y: Math.random() * 0.6 + 0.2
+                    },
+                    colors: colors
+                });
+            }
         }, i * 400);
     }
     
-    // Продолжаем фейерверки в течение 3 секунд
     const fireworkInterval = setInterval(() => {
-        tsParticles.confetti({
-            particleCount: 50,
-            spread: 60,
-            origin: {
-                x: Math.random(),
-                y: Math.random() * 0.5
-            },
-            colors: colors
-        });
+        if (window.tsParticles && tsParticles.confetti) {
+            tsParticles.confetti({
+                particleCount: 50,
+                spread: 60,
+                origin: {
+                    x: Math.random(),
+                    y: Math.random() * 0.5
+                },
+                colors: colors
+            });
+        }
     }, 500);
     
-    // Останавливаем через 3 секунды
     setTimeout(() => {
         clearInterval(fireworkInterval);
     }, 3000);
 }
 
-// Продолжить
+// === Продолжить ===
 function continueApp() {
     resultScreen.classList.remove('active');
     wheelScreen.classList.add('active');
-    
-    // Сбрасываем фейерверки
     document.getElementById('fireworks-container').innerHTML = '';
 }
 
-// Обработчики событий
+// === Обработчики событий ===
 spinBtn.addEventListener('click', spinWheel);
 continueBtn.addEventListener('click', continueApp);
 
-// Инициализация
+// === Инициализация ===
 drawWheel();
 
-// Настройка цветов Telegram
-if (tg.colorScheme === 'dark') {
-    document.body.style.background = 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)';
-}
+console.log('✅ Приложение готово!');
