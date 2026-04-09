@@ -21,6 +21,9 @@ const compliments = [
     { text: 'заботливая', color: '#1ABC9C' }
 ];
 
+const segmentCount = compliments.length;
+const segmentDegrees = 360 / segmentCount;
+
 let lastResultIndex = -1;
 let currentRotation = 0;
 let isSpinning = false;
@@ -38,7 +41,7 @@ const ctx = wheel.getContext('2d');
 const centerX = wheel.width / 2;
 const centerY = wheel.height / 2;
 const radius = wheel.width / 2 - 10;
-const segmentAngle = (2 * Math.PI) / compliments.length;
+const segmentAngle = (2 * Math.PI) / segmentCount;
 
 // === Отрисовка колеса ===
 function drawWheel() {
@@ -82,6 +85,21 @@ function drawWheel() {
     ctx.stroke();
 }
 
+// === Вычисление результата по углу вращения ===
+function calculateResult(finalRotation) {
+    // Нормализуем угол (0-360)
+    const normalizedRotation = finalRotation % 360;
+    
+    // Стрелка сверху (0 градусов), колесо крутится по часовой
+    // Поэтому вычисляем какой сегмент оказался наверху
+    const effectiveAngle = (360 - normalizedRotation) % 360;
+    
+    // Вычисляем индекс сегмента
+    const resultIndex = Math.floor(effectiveAngle / segmentDegrees);
+    
+    return resultIndex % segmentCount;
+}
+
 // === Вращение колеса ===
 function spinWheel() {
     if (isSpinning) return;
@@ -96,14 +114,23 @@ function spinWheel() {
     
     // Выбираем случайный сегмент (не повторяющийся)
     let availableIndices = compliments.map((_, i) => i).filter(i => i !== lastResultIndex);
-    const resultIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
-    lastResultIndex = resultIndex;
+    const targetIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
     
-    // Рассчитываем угол остановки
-    const segmentDegrees = 360 / compliments.length;
-    const targetSegmentAngle = resultIndex * segmentDegrees;
+    // Рассчитываем угол для попадания на нужный сегмент
+    // Сегмент 0 начинается с 0 градусов, сегмент 1 с 45 градусов и т.д.
+    // Чтобы сегмент оказался под стрелкой (сверху), нужно повернуть колесо так,
+    // чтобы центр сегмента был на 0 градусов
+    const segmentCenterAngle = targetIndex * segmentDegrees + segmentDegrees / 2;
+    
+    // Минимум 5 полных оборотов + угол для нужного сегмента
+    const minSpins = 5;
+    const baseRotation = 360 * minSpins;
+    
+    // Добавляем небольшую случайность внутри сегмента (±40% от ширины сегмента)
     const randomOffset = (Math.random() - 0.5) * segmentDegrees * 0.8;
-    const finalAngle = 360 * 5 + (360 - targetSegmentAngle) + randomOffset;
+    
+    // Финальный угол вращения
+    const finalAngle = baseRotation + (360 - segmentCenterAngle) + randomOffset;
     
     // Анимация вращения (3 секунды с замедлением)
     const duration = 3000;
@@ -125,7 +152,10 @@ function spinWheel() {
         if (progress < 1) {
             requestAnimationFrame(animate);
         } else {
+            // Анимация завершена - вычисляем реальный результат
             setTimeout(() => {
+                const resultIndex = calculateResult(currentRotation);
+                lastResultIndex = resultIndex;
                 showResult(compliments[resultIndex].text);
                 isSpinning = false;
                 spinBtn.disabled = false;
@@ -137,48 +167,53 @@ function spinWheel() {
 }
 
 // === Показ результата с фейерверками ===
-async function showResult(word) {
+function showResult(word) {
     wheelScreen.classList.remove('active');
     resultScreen.classList.add('active');
     resultWord.textContent = word.toUpperCase();
     
-    await startFireworks();
+    // Запускаем фейерверки
+    startFireworks();
 }
 
-// === Фейерверки ===
-async function startFireworks() {
-    const colors = ['#ff0000', '#00ff00', '#ff8c00'];
+// === Фейерверки (canvas-confetti) ===
+function startFireworks() {
+    const colors = ['#ff0000', '#00ff00', '#ff8c00', '#ffff00', '#ff00ff', '#00ffff'];
     
+    // Несколько залпов
     for (let i = 0; i < 5; i++) {
         setTimeout(() => {
-            if (window.tsParticles && tsParticles.confetti) {
-                tsParticles.confetti({
-                    particleCount: 100,
-                    spread: 70,
-                    origin: {
-                        x: Math.random() * 0.8 + 0.1,
-                        y: Math.random() * 0.6 + 0.2
-                    },
-                    colors: colors
-                });
-            }
-        }, i * 400);
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: {
+                    x: Math.random() * 0.8 + 0.1,
+                    y: Math.random() * 0.6 + 0.2
+                },
+                colors: colors,
+                gravity: 1.2,
+                drift: 0,
+                ticks: 200
+            });
+        }, i * 300);
     }
     
+    // Дополнительные залпы в течение 3 секунд
     const fireworkInterval = setInterval(() => {
-        if (window.tsParticles && tsParticles.confetti) {
-            tsParticles.confetti({
-                particleCount: 50,
-                spread: 60,
-                origin: {
-                    x: Math.random(),
-                    y: Math.random() * 0.5
-                },
-                colors: colors
-            });
-        }
-    }, 500);
+        confetti({
+            particleCount: 50,
+            spread: 60,
+            origin: {
+                x: Math.random(),
+                y: Math.random() * 0.5
+            },
+            colors: colors,
+            gravity: 1.2,
+            ticks: 150
+        });
+    }, 400);
     
+    // Останавливаем через 3 секунды
     setTimeout(() => {
         clearInterval(fireworkInterval);
     }, 3000);
@@ -188,7 +223,6 @@ async function startFireworks() {
 function continueApp() {
     resultScreen.classList.remove('active');
     wheelScreen.classList.add('active');
-    document.getElementById('fireworks-container').innerHTML = '';
 }
 
 // === Обработчики событий ===
@@ -199,3 +233,5 @@ continueBtn.addEventListener('click', continueApp);
 drawWheel();
 
 console.log('✅ Приложение готово!');
+console.log('🎡 Сегментов:', segmentCount);
+console.log('📐 Градусов на сегмент:', segmentDegrees);
