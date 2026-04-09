@@ -1,5 +1,11 @@
 console.log('🔹 Script начал загрузку...');
 
+// === Защита от повторного запуска ===
+if (window.appInitialized) {
+    console.log('⚠️ Приложение уже инициализировано');
+}
+window.appInitialized = true;
+
 // === Проверка элементов ===
 const wheelScreen = document.getElementById('wheel-screen');
 const resultScreen = document.getElementById('result-screen');
@@ -44,6 +50,8 @@ const segmentAngle = (2 * Math.PI) / segmentCount;
 
 // === Отрисовка колеса ===
 function drawWheel() {
+    console.log('🔹 Отрисовка колеса...');
+    
     ctx.clearRect(0, 0, wheel.width, wheel.height);
     
     for (let i = 0; i < segmentCount; i++) {
@@ -76,6 +84,8 @@ function drawWheel() {
     ctx.arc(centerX, centerY, 20, 0, 2 * Math.PI);
     ctx.fillStyle = '#fff';
     ctx.fill();
+    
+    console.log('✅ Колесо отрисовано');
 }
 
 // === Вычисление результата ===
@@ -172,6 +182,12 @@ function continueApp() {
 // === Сердечки на фоне ===
 function createHearts() {
     const container = document.getElementById('hearts-container');
+    
+    // Очищаем контейнер перед созданием
+    if (container) {
+        container.innerHTML = '';
+    }
+    
     const heartCount = 25;
     
     for (let i = 0; i < heartCount; i++) {
@@ -202,7 +218,8 @@ function createHearts() {
 spinBtn.addEventListener('click', spinWheel);
 continueBtn.addEventListener('click', continueApp);
 
-// === Запуск ===
+// === Запуск (только один раз!) ===
+console.log('🔹 Инициализация приложения...');
 drawWheel();
 createHearts();
 console.log('✅ Приложение готово!');
