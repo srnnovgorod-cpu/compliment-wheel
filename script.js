@@ -1,4 +1,4 @@
-// === Инициализация Telegram Web App (с защитой) ===
+// === Инициализация Telegram Web App ===
 let tg = null;
 
 if (window.Telegram && window.Telegram.WebApp) {
@@ -22,7 +22,7 @@ const compliments = [
 ];
 
 const segmentCount = compliments.length;
-const segmentDegrees = 360 / segmentCount;
+const segmentDegrees = 360 / segmentCount; // 45 градусов на сегмент
 
 let lastResultIndex = -1;
 let currentRotation = 0;
@@ -48,7 +48,8 @@ function drawWheel() {
     ctx.clearRect(0, 0, wheel.width, wheel.height);
     
     compliments.forEach((compliment, index) => {
-        const startAngle = index * segmentAngle;
+        // Canvas: 0 градусов = 3 часа, вращение по часовой
+        const startAngle = index * segmentAngle - Math.PI / 2; // -90° чтобы 0-й сегмент был сверху
         const endAngle = startAngle + segmentAngle;
         
         // Рисуем сегмент
@@ -90,14 +91,11 @@ function calculateResult(finalRotation) {
     // Нормализуем угол (0-360)
     const normalizedRotation = finalRotation % 360;
     
-    // Стрелка сверху (0 градусов), колесо крутится по часовой
-    // Поэтому вычисляем какой сегмент оказался наверху
-    const effectiveAngle = (360 - normalizedRotation) % 360;
+    // Стрелка сверху. Колесо крутится по часовой.
+    // Значит сегмент под стрелкой = (360 - normalizedRotation) / segmentDegrees
+    const index = Math.floor((360 - normalizedRotation) / segmentDegrees) % segmentCount;
     
-    // Вычисляем индекс сегмента
-    const resultIndex = Math.floor(effectiveAngle / segmentDegrees);
-    
-    return resultIndex % segmentCount;
+    return index;
 }
 
 // === Вращение колеса ===
@@ -116,13 +114,14 @@ function spinWheel() {
     let availableIndices = compliments.map((_, i) => i).filter(i => i !== lastResultIndex);
     const targetIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
     
+    console.log('🎯 Целевой индекс:', targetIndex, '(', compliments[targetIndex].text, ')');
+    
     // Рассчитываем угол для попадания на нужный сегмент
-    // Сегмент 0 начинается с 0 градусов, сегмент 1 с 45 градусов и т.д.
-    // Чтобы сегмент оказался под стрелкой (сверху), нужно повернуть колесо так,
-    // чтобы центр сегмента был на 0 градусов
+    // Каждый сегмент = 45 градусов
+    // Чтобы сегмент N оказался сверху, нужно повернуть на: 360 - (N * 45 + 22.5)
     const segmentCenterAngle = targetIndex * segmentDegrees + segmentDegrees / 2;
     
-    // Минимум 5 полных оборотов + угол для нужного сегмента
+    // Минимум 5 полных оборотов
     const minSpins = 5;
     const baseRotation = 360 * minSpins;
     
@@ -131,6 +130,8 @@ function spinWheel() {
     
     // Финальный угол вращения
     const finalAngle = baseRotation + (360 - segmentCenterAngle) + randomOffset;
+    
+    console.log('📐 Финальный угол:', finalAngle.toFixed(2), 'градусов');
     
     // Анимация вращения (3 секунды с замедлением)
     const duration = 3000;
@@ -155,83 +156,8 @@ function spinWheel() {
             // Анимация завершена - вычисляем реальный результат
             setTimeout(() => {
                 const resultIndex = calculateResult(currentRotation);
-                lastResultIndex = resultIndex;
-                showResult(compliments[resultIndex].text);
-                isSpinning = false;
-                spinBtn.disabled = false;
-            }, 100);
-        }
-    }
-    
-    animate();
-}
-
-// === Показ результата с фейерверками ===
-function showResult(word) {
-    wheelScreen.classList.remove('active');
-    resultScreen.classList.add('active');
-    resultWord.textContent = word.toUpperCase();
-    
-    // Запускаем фейерверки
-    startFireworks();
-}
-
-// === Фейерверки (canvas-confetti) ===
-function startFireworks() {
-    const colors = ['#ff0000', '#00ff00', '#ff8c00', '#ffff00', '#ff00ff', '#00ffff'];
-    
-    // Несколько залпов
-    for (let i = 0; i < 5; i++) {
-        setTimeout(() => {
-            confetti({
-                particleCount: 100,
-                spread: 70,
-                origin: {
-                    x: Math.random() * 0.8 + 0.1,
-                    y: Math.random() * 0.6 + 0.2
-                },
-                colors: colors,
-                gravity: 1.2,
-                drift: 0,
-                ticks: 200
-            });
-        }, i * 300);
-    }
-    
-    // Дополнительные залпы в течение 3 секунд
-    const fireworkInterval = setInterval(() => {
-        confetti({
-            particleCount: 50,
-            spread: 60,
-            origin: {
-                x: Math.random(),
-                y: Math.random() * 0.5
-            },
-            colors: colors,
-            gravity: 1.2,
-            ticks: 150
-        });
-    }, 400);
-    
-    // Останавливаем через 3 секунды
-    setTimeout(() => {
-        clearInterval(fireworkInterval);
-    }, 3000);
-}
-
-// === Продолжить ===
-function continueApp() {
-    resultScreen.classList.remove('active');
-    wheelScreen.classList.add('active');
-}
-
-// === Обработчики событий ===
-spinBtn.addEventListener('click', spinWheel);
-continueBtn.addEventListener('click', continueApp);
-
-// === Инициализация ===
-drawWheel();
-
-console.log('✅ Приложение готово!');
-console.log('🎡 Сегментов:', segmentCount);
-console.log('📐 Градусов на сегмент:', segmentDegrees);
+                
+                console.log('🏁 Остановились на угле:', currentRotation.toFixed(2));
+                console.log('🏁 Нормализованный угол:', (currentRotation % 360).toFixed(2));
+                console.log('🏁 Вычисленный индекс:', resultIndex, '(', compliments[resultIndex].text, ')');
+                console.log('🏁 Целевой индекс:', targetIndex, '
