@@ -1,15 +1,36 @@
-// === Инициализация Telegram Web App ===
-let tg = null;
+console.log('🔹 Script начал загрузку...');
 
+// === Проверка элементов ===
+console.log('🔹 Проверка элементов DOM...');
+
+const wheelScreen = document.getElementById('wheel-screen');
+const resultScreen = document.getElementById('result-screen');
+const wheel = document.getElementById('wheel');
+const spinBtn = document.getElementById('spin-btn');
+const continueBtn = document.getElementById('continue-btn');
+const resultWord = document.getElementById('result-word');
+
+console.log('wheelScreen:', wheelScreen);
+console.log('resultScreen:', resultScreen);
+console.log('wheel:', wheel);
+console.log('spinBtn:', spinBtn);
+
+if (!wheel || !spinBtn) {
+    console.error('❌ Критическая ошибка: элементы не найдены!');
+}
+
+// === Telegram ===
+let tg = null;
 if (window.Telegram && window.Telegram.WebApp) {
     tg = window.Telegram.WebApp;
     tg.ready();
     tg.expand();
+    console.log('✅ Telegram WebApp подключён');
 } else {
-    console.log('Telegram Web App не доступен (запуск в браузере)');
+    console.log('ℹ️ Telegram WebApp не доступен (браузер)');
 }
 
-// === Данные колеса ===
+// === Данные ===
 const compliments = [
     { text: 'прекрасная', color: '#FF6B9D' },
     { text: 'умная', color: '#4A90E2' },
@@ -22,118 +43,102 @@ const compliments = [
 ];
 
 const segmentCount = compliments.length;
-const segmentDegrees = 360 / segmentCount; // 45 градусов на сегмент
+const segmentDegrees = 360 / segmentCount;
 
+console.log('✅ Данные загружены:', segmentCount, 'сегментов');
+
+// === Переменные ===
 let lastResultIndex = -1;
 let currentRotation = 0;
 let isSpinning = false;
 
-// === Элементы DOM ===
-const wheelScreen = document.getElementById('wheel-screen');
-const resultScreen = document.getElementById('result-screen');
-const wheel = document.getElementById('wheel');
-const spinBtn = document.getElementById('spin-btn');
-const continueBtn = document.getElementById('continue-btn');
-const resultWord = document.getElementById('result-word');
-
-// === Настройка Canvas ===
+// === Canvas ===
 const ctx = wheel.getContext('2d');
 const centerX = wheel.width / 2;
 const centerY = wheel.height / 2;
 const radius = wheel.width / 2 - 10;
 const segmentAngle = (2 * Math.PI) / segmentCount;
 
+console.log('✅ Canvas настроен:', centerX, centerY, radius);
+
 // === Отрисовка колеса ===
 function drawWheel() {
+    console.log('🔹 Отрисовка колеса...');
+    
     ctx.clearRect(0, 0, wheel.width, wheel.height);
     
-    compliments.forEach((compliment, index) => {
-        // Canvas: 0 градусов = 3 часа, вращение по часовой
-        const startAngle = index * segmentAngle - Math.PI / 2; // -90° чтобы 0-й сегмент был сверху
+    for (let i = 0; i < segmentCount; i++) {
+        const startAngle = i * segmentAngle;
         const endAngle = startAngle + segmentAngle;
         
-        // Рисуем сегмент
+        // Сегмент
         ctx.beginPath();
         ctx.moveTo(centerX, centerY);
         ctx.arc(centerX, centerY, radius, startAngle, endAngle);
         ctx.closePath();
-        ctx.fillStyle = compliment.color;
+        ctx.fillStyle = compliments[i].color;
         ctx.fill();
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 3;
         ctx.stroke();
         
-        // Рисуем текст
+        // Текст
         ctx.save();
         ctx.translate(centerX, centerY);
         ctx.rotate(startAngle + segmentAngle / 2);
         ctx.textAlign = 'right';
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 16px Arial';
+        ctx.font = 'bold 14px Arial';
         ctx.shadowColor = 'rgba(0,0,0,0.5)';
         ctx.shadowBlur = 4;
-        ctx.fillText(compliment.text, radius - 20, 5);
+        ctx.fillText(compliments[i].text, radius - 20, 5);
         ctx.restore();
-    });
+    }
     
-    // Центральный круг
+    // Центр
     ctx.beginPath();
     ctx.arc(centerX, centerY, 20, 0, 2 * Math.PI);
     ctx.fillStyle = '#fff';
     ctx.fill();
-    ctx.strokeStyle = '#ddd';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    
+    console.log('✅ Колесо отрисовано');
 }
 
-// === Вычисление результата по углу вращения ===
-function calculateResult(finalRotation) {
-    // Нормализуем угол (0-360)
-    const normalizedRotation = finalRotation % 360;
-    
-    // Стрелка сверху. Колесо крутится по часовой.
-    // Значит сегмент под стрелкой = (360 - normalizedRotation) / segmentDegrees
-    const index = Math.floor((360 - normalizedRotation) / segmentDegrees) % segmentCount;
-    
+// === Вычисление результата ===
+function getResultIndex(rotation) {
+    const normalized = rotation % 360;
+    const index = Math.floor((360 - normalized) / segmentDegrees) % segmentCount;
     return index;
 }
 
-// === Вращение колеса ===
+// === Вращение ===
 function spinWheel() {
-    if (isSpinning) return;
+    console.log('🔹 Кнопка нажата!');
+    
+    if (isSpinning) {
+        console.log('⚠️ Уже вращается');
+        return;
+    }
     
     isSpinning = true;
     spinBtn.disabled = true;
+    console.log('✅ Вращение началось');
     
-    // Вибрация (если Telegram доступен)
-    if (tg && tg.HapticFeedback) {
-        tg.HapticFeedback.impactOccurred('medium');
-    }
+    // Выбираем индекс (не повторяющийся)
+    let available = compliments.map((_, i) => i).filter(i => i !== lastResultIndex);
+    const targetIndex = available[Math.floor(Math.random() * available.length)];
     
-    // Выбираем случайный сегмент (не повторяющийся)
-    let availableIndices = compliments.map((_, i) => i).filter(i => i !== lastResultIndex);
-    const targetIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+    console.log('🎯 Целевой индекс:', targetIndex, compliments[targetIndex].text);
     
-    console.log('🎯 Целевой индекс:', targetIndex, '(', compliments[targetIndex].text, ')');
-    
-    // Рассчитываем угол для попадания на нужный сегмент
-    // Каждый сегмент = 45 градусов
-    // Чтобы сегмент N оказался сверху, нужно повернуть на: 360 - (N * 45 + 22.5)
-    const segmentCenterAngle = targetIndex * segmentDegrees + segmentDegrees / 2;
-    
-    // Минимум 5 полных оборотов
-    const minSpins = 5;
-    const baseRotation = 360 * minSpins;
-    
-    // Добавляем небольшую случайность внутри сегмента (±40% от ширины сегмента)
+    // Угол для этого сегмента
+    const segmentCenter = targetIndex * segmentDegrees + segmentDegrees / 2;
+    const spins = 360 * 5;
     const randomOffset = (Math.random() - 0.5) * segmentDegrees * 0.8;
+    const finalAngle = spins + (360 - segmentCenter) + randomOffset;
     
-    // Финальный угол вращения
-    const finalAngle = baseRotation + (360 - segmentCenterAngle) + randomOffset;
+    console.log('📐 Финальный угол:', finalAngle.toFixed(2));
     
-    console.log('📐 Финальный угол:', finalAngle.toFixed(2), 'градусов');
-    
-    // Анимация вращения (3 секунды с замедлением)
+    // Анимация
     const duration = 3000;
     const startTime = Date.now();
     const startRotation = currentRotation;
@@ -141,23 +146,73 @@ function spinWheel() {
     function animate() {
         const elapsed = Date.now() - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        
-        // Easing function (ease-out cubic)
         const easeProgress = 1 - Math.pow(1 - progress, 3);
         
         currentRotation = startRotation + finalAngle * easeProgress;
-        
         wheel.style.transform = `rotate(${currentRotation}deg)`;
         wheel.style.transition = 'none';
         
         if (progress < 1) {
             requestAnimationFrame(animate);
         } else {
-            // Анимация завершена - вычисляем реальный результат
             setTimeout(() => {
-                const resultIndex = calculateResult(currentRotation);
+                const resultIndex = getResultIndex(currentRotation);
                 
-                console.log('🏁 Остановились на угле:', currentRotation.toFixed(2));
-                console.log('🏁 Нормализованный угол:', (currentRotation % 360).toFixed(2));
-                console.log('🏁 Вычисленный индекс:', resultIndex, '(', compliments[resultIndex].text, ')');
-                console.log('🏁 Целевой индекс:', targetIndex, '
+                console.log('🏁 Вычисленный индекс:', resultIndex, compliments[resultIndex].text);
+                console.log('🎯 Целевой индекс:', targetIndex, compliments[targetIndex].text);
+                console.log('✅ Совпадение:', resultIndex === targetIndex ? 'ДА' : 'НЕТ');
+                
+                lastResultIndex = resultIndex;
+                showResult(compliments[resultIndex].text);
+                isSpinning = false;
+                spinBtn.disabled = false;
+            }, 100);
+        }
+    }
+    
+    animate();
+}
+
+// === Результат ===
+function showResult(word) {
+    console.log(' Показ результата:', word);
+    
+    wheelScreen.classList.remove('active');
+    resultScreen.classList.add('active');
+    resultWord.textContent = word.toUpperCase();
+    
+    startFireworks();
+}
+
+// === Фейерверки ===
+function startFireworks() {
+    const colors = ['#ff0000', '#00ff00', '#ff8c00'];
+    
+    for (let i = 0; i < 5; i++) {
+        setTimeout(() => {
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: Math.random() * 0.6 + 0.2 },
+                colors: colors
+            });
+        }, i * 300);
+    }
+}
+
+// === Продолжить ===
+function continueApp() {
+    resultScreen.classList.remove('active');
+    wheelScreen.classList.add('active');
+}
+
+// === Обработчики ===
+console.log('🔹 Навешиваем обработчики...');
+spinBtn.addEventListener('click', spinWheel);
+continueBtn.addEventListener('click', continueApp);
+console.log('✅ Обработчики навешаны');
+
+// === Запуск ===
+console.log('🔹 Инициализация...');
+drawWheel();
+console.log('✅ Приложение готово!');
