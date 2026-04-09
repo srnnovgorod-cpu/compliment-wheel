@@ -6,6 +6,28 @@ if (window.appInitialized) {
 }
 window.appInitialized = true;
 
+// === Telegram Web App ===
+let tg = null;
+if (window.Telegram && window.Telegram.WebApp) {
+    tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand(); // Развернуть на весь экран
+    
+    // Настройка цветов под тему Telegram
+    if (tg.themeParams) {
+        console.log('🎨 Тема Telegram:', tg.themeParams);
+    }
+    
+    // Отключаем нативный скролл
+    tg.disableVerticalSwipes();
+    
+    // Устанавливаем цвета хедера
+    tg.setHeaderColor('#667eea');
+    tg.setBackgroundColor('#667eea');
+} else {
+    console.log('ℹ️ Telegram WebApp не доступен (браузер)');
+}
+
 // === Проверка элементов ===
 const wheelScreen = document.getElementById('wheel-screen');
 const resultScreen = document.getElementById('result-screen');
@@ -13,14 +35,6 @@ const wheel = document.getElementById('wheel');
 const spinBtn = document.getElementById('spin-btn');
 const continueBtn = document.getElementById('continue-btn');
 const resultWord = document.getElementById('result-word');
-
-// === Telegram ===
-let tg = null;
-if (window.Telegram && window.Telegram.WebApp) {
-    tg = window.Telegram.WebApp;
-    tg.ready();
-    tg.expand();
-}
 
 // === Данные ===
 const compliments = [
@@ -50,8 +64,6 @@ const segmentAngle = (2 * Math.PI) / segmentCount;
 
 // === Отрисовка колеса ===
 function drawWheel() {
-    console.log('🔹 Отрисовка колеса...');
-    
     ctx.clearRect(0, 0, wheel.width, wheel.height);
     
     for (let i = 0; i < segmentCount; i++) {
@@ -84,8 +96,6 @@ function drawWheel() {
     ctx.arc(centerX, centerY, 20, 0, 2 * Math.PI);
     ctx.fillStyle = '#fff';
     ctx.fill();
-    
-    console.log('✅ Колесо отрисовано');
 }
 
 // === Вычисление результата ===
@@ -102,6 +112,11 @@ function spinWheel() {
     
     isSpinning = true;
     spinBtn.disabled = true;
+    
+    // Вибрация через Telegram
+    if (tg && tg.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred('medium');
+    }
     
     let available = compliments.map((_, i) => i).filter(i => i !== lastResultIndex);
     const targetIndex = available[Math.floor(Math.random() * available.length)];
@@ -155,6 +170,11 @@ function showResult(word) {
     resultScreen.classList.add('active');
     resultWord.textContent = word.toUpperCase();
     startFireworks();
+    
+    // Вибрация успеха
+    if (tg && tg.HapticFeedback) {
+        tg.HapticFeedback.notificationOccurred('success');
+    }
 }
 
 // === Фейерверки ===
@@ -183,7 +203,6 @@ function continueApp() {
 function createHearts() {
     const container = document.getElementById('hearts-container');
     
-    // Очищаем контейнер перед созданием
     if (container) {
         container.innerHTML = '';
     }
@@ -218,7 +237,7 @@ function createHearts() {
 spinBtn.addEventListener('click', spinWheel);
 continueBtn.addEventListener('click', continueApp);
 
-// === Запуск (только один раз!) ===
+// === Запуск ===
 console.log('🔹 Инициализация приложения...');
 drawWheel();
 createHearts();
