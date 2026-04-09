@@ -29,7 +29,7 @@ const compliments = [
 ];
 
 const segmentCount = compliments.length;
-const segmentDegrees = 360 / segmentCount; // 45 градусов
+const segmentDegrees = 360 / segmentCount;
 
 let lastResultIndex = -1;
 let currentRotation = 0;
@@ -50,7 +50,6 @@ function drawWheel() {
         const startAngle = i * segmentAngle;
         const endAngle = startAngle + segmentAngle;
         
-        // Сегмент
         ctx.beginPath();
         ctx.moveTo(centerX, centerY);
         ctx.arc(centerX, centerY, radius, startAngle, endAngle);
@@ -61,7 +60,6 @@ function drawWheel() {
         ctx.lineWidth = 3;
         ctx.stroke();
         
-        // Текст
         ctx.save();
         ctx.translate(centerX, centerY);
         ctx.rotate(startAngle + segmentAngle / 2);
@@ -74,18 +72,15 @@ function drawWheel() {
         ctx.restore();
     }
     
-    // Центр
     ctx.beginPath();
     ctx.arc(centerX, centerY, 20, 0, 2 * Math.PI);
     ctx.fillStyle = '#fff';
     ctx.fill();
 }
 
-// === Вычисление результата по углу ===
+// === Вычисление результата ===
 function getResultIndex(rotation) {
     const normalized = rotation % 360;
-    // Стрелка на 270° (12 часов в Canvas)
-    // После вращения на normalized°, сегмент на угле (270 - normalized) будет под стрелкой
     let angle = (270 - normalized + 360) % 360;
     const index = Math.floor(angle / segmentDegrees);
     return index % segmentCount;
@@ -98,28 +93,19 @@ function spinWheel() {
     isSpinning = true;
     spinBtn.disabled = true;
     
-    // Выбираем индекс (не повторяющийся)
     let available = compliments.map((_, i) => i).filter(i => i !== lastResultIndex);
     const targetIndex = available[Math.floor(Math.random() * available.length)];
     
     console.log('🎯 Целевой индекс:', targetIndex, compliments[targetIndex].text);
     
-    // Центр целевого сегмента в Canvas
     const segmentCenter = targetIndex * segmentDegrees + segmentDegrees / 2;
-    
-    // Чтобы сегмент оказался наверху (270°), нужно повернуть на:
     const rotationToTop = (270 - segmentCenter + 360) % 360;
-    
-    // 5 полных оборотов + угол для сегмента + небольшая случайность
     const spins = 360 * 5;
     const randomOffset = (Math.random() - 0.5) * segmentDegrees * 0.8;
     const finalAngle = spins + rotationToTop + randomOffset;
     
-    console.log('📐 Центр сегмента:', segmentCenter.toFixed(2), '°');
-    console.log('📐 Поворот для верха:', rotationToTop.toFixed(2), '°');
     console.log('📐 Финальный угол:', finalAngle.toFixed(2), '°');
     
-    // Анимация
     const duration = 3000;
     const startTime = Date.now();
     const startRotation = currentRotation;
@@ -139,9 +125,7 @@ function spinWheel() {
             setTimeout(() => {
                 const resultIndex = getResultIndex(currentRotation);
                 
-                console.log('🏁 Нормализованный угол:', (currentRotation % 360).toFixed(2), '°');
                 console.log('🏁 Вычисленный индекс:', resultIndex, compliments[resultIndex].text);
-                console.log('🎯 Целевой индекс:', targetIndex, compliments[targetIndex].text);
                 console.log('✅ Совпадение:', resultIndex === targetIndex ? 'ДА' : 'НЕТ');
                 
                 lastResultIndex = resultIndex;
@@ -185,10 +169,40 @@ function continueApp() {
     wheelScreen.classList.add('active');
 }
 
+// === Сердечки на фоне ===
+function createHearts() {
+    const container = document.getElementById('hearts-container');
+    const heartCount = 25;
+    
+    for (let i = 0; i < heartCount; i++) {
+        setTimeout(() => {
+            const heart = document.createElement('div');
+            heart.className = 'heart';
+            heart.innerHTML = '💕';
+            
+            heart.style.left = Math.random() * 100 + '%';
+            
+            const size = Math.random() * 15 + 25;
+            heart.style.fontSize = size + 'px';
+            
+            const duration = Math.random() * 5 + 8;
+            heart.style.animationDuration = duration + 's';
+            
+            heart.style.animationDelay = Math.random() * 5 + 's';
+            
+            const colors = ['#ff6b9d', '#ff8fab', '#ffb3c6', '#ff85a2', '#ff7eb9'];
+            heart.style.color = colors[Math.floor(Math.random() * colors.length)];
+            
+            container.appendChild(heart);
+        }, i * 200);
+    }
+}
+
 // === Обработчики ===
 spinBtn.addEventListener('click', spinWheel);
 continueBtn.addEventListener('click', continueApp);
 
 // === Запуск ===
 drawWheel();
+createHearts();
 console.log('✅ Приложение готово!');
