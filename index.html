@@ -9,6 +9,25 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+        <!-- Контейнер для сердечек -->
+    <div class="hearts-container" id="hearts-container"></div>
+    
+    <div class="container">
+        <div id="wheel-screen" class="screen active">
+            <h1 class="title">Всегда помни, что ты самая...</h1>
+            <div class="wheel-container">
+                <canvas id="wheel" width="300" height="300"></canvas>
+                <div class="pointer"></div>
+            </div>
+            <button id="spin-btn" class="spin-button">Какая же?</button>
+        </div>
+
+        <div id="result-screen" class="screen">
+            <h1 id="result-word" class="result-word"></h1>
+            <p class="love-text">И я тебя очень люблю</p>
+            <button id="continue-btn" class="continue-button">Продолжать получать комплименты</button>
+        </div>
+    </div>
     <div class="container">
         <div id="wheel-screen" class="screen active">
             <h1 class="title">Всегда помни, что ты самая...</h1>
